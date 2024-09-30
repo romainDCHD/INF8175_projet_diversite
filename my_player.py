@@ -22,6 +22,56 @@ class MyPlayer(PlayerDivercite):
             time_limit (float, optional): the time limit in (s)
         """
         super().__init__(piece_type, name)
+    
+    def is_terminal(self, depth, max_depth):
+        """
+        Fonction nous permettant de savoir si on a atteint la profondeur souhaitée
+        """
+        return depth == max_depth
+        
+    def max_value(self, state: GameState, depth, max_depth):
+        """
+        Incarne notre Max player
+        """
+        if self.is_terminal(depth, max_depth):
+            score = state.scores[self.get_id()]
+            return score, None
+
+        v_star = float('-inf')
+        m_star = None
+        
+        possible_actions = state.generate_possible_light_actions()
+
+        for action in possible_actions:
+            new_state = state.apply_action(action)
+            v, _ = self.min_value(new_state, depth + 1, max_depth)
+
+            if v > v_star:
+                v_star = v
+                m_star = action
+
+        return v_star, m_star
+
+    # Minimize value for MIN player
+    def min_value(self, state: GameState, depth, max_depth):
+        if self.is_terminal(depth, max_depth):
+            score = state.scores[self.get_id()]
+            return score, None
+
+        v_star = float('inf')
+        m_star = None
+        
+        possible_actions = state.generate_possible_light_actions()
+
+        for action in possible_actions:
+            new_state = state.apply_action(action)
+            v, _ = self.max_value(new_state, depth + 1, max_depth)
+
+            if v < v_star:
+                v_star = v
+                m_star = action
+
+        return v_star, m_star
 
     def compute_action(self, current_state: GameState, remaining_time: int = 1e9, **kwargs) -> Action:
         """
@@ -35,4 +85,10 @@ class MyPlayer(PlayerDivercite):
         """
 
         #TODO
+        # On commence par un minmax d'une profondeur de 2
+        
+                
+        value, move = self.max_value(current_state, 0, 2)
+        return move
+                
         raise MethodNotImplementedError()
