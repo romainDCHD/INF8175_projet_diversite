@@ -29,7 +29,7 @@ class MyPlayer(PlayerDivercite):
         """
         return depth == max_depth
         
-    def max_value(self, state: GameState, depth, max_depth):
+    def max_value(self, state: GameState, depth, max_depth, alpha, beta):
         """
         Incarne notre Max player
         """
@@ -44,16 +44,20 @@ class MyPlayer(PlayerDivercite):
 
         for action in possible_actions:
             new_state = state.apply_action(action)
-            v, _ = self.min_value(new_state, depth + 1, max_depth)
+            v, _ = self.min_value(new_state, depth + 1, max_depth, alpha, beta)
 
             if v > v_star:
                 v_star = v
                 m_star = action
+                alpha = max(alpha, v_star)
+            
+            if (v_star >= beta):
+                return v_star, m_star   
 
         return v_star, m_star
 
     # Minimize value for MIN player
-    def min_value(self, state: GameState, depth, max_depth):
+    def min_value(self, state: GameState, depth, max_depth, alpha, beta):
         if self.is_terminal(depth, max_depth):
             score = state.scores[self.get_id()]
             return score, None
@@ -65,11 +69,15 @@ class MyPlayer(PlayerDivercite):
 
         for action in possible_actions:
             new_state = state.apply_action(action)
-            v, _ = self.max_value(new_state, depth + 1, max_depth)
+            v, _ = self.max_value(new_state, depth + 1, max_depth, alpha, beta)
 
             if v < v_star:
                 v_star = v
                 m_star = action
+                beta = min(beta, v_star)
+                
+            if (v_star <= alpha):
+                return v_star, m_star
 
         return v_star, m_star
 
@@ -85,10 +93,10 @@ class MyPlayer(PlayerDivercite):
         """
 
         #TODO
-        # On commence par un minmax d'une profondeur de 2
+        # On commence par un 𝖺𝗅𝗉𝗁𝖺𝖡𝖾𝗍𝖺𝖲𝖾𝖺𝗋𝖼𝗁 d'une profondeur de 2
         
                 
-        value, move = self.max_value(current_state, 0, 2)
+        value, move = self.max_value(current_state, 0, 2, float('-inf'), float('inf'))
         return move
                 
         raise MethodNotImplementedError()
