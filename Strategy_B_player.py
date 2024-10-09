@@ -1,7 +1,8 @@
+
 from player_divercite import PlayerDivercite
+from game_state_divercite import GameStateDivercite
 from seahorse.game.action import Action
 from seahorse.game.game_state import GameState
-from game_state_divercite import GameStateDivercite
 from seahorse.utils.custom_exceptions import MethodNotImplementedError
 
 class MyPlayer(PlayerDivercite):
@@ -23,17 +24,18 @@ class MyPlayer(PlayerDivercite):
         """
         super().__init__(piece_type, name)
     
-    def is_terminal(self, depth, max_depth):
+    def is_terminal(self, state: GameState, depth, max_depth):
         """
         Fonction nous permettant de savoir si on a atteint la profondeur souhaitée
         """
-        return depth == max_depth
         
-    def max_value(self, state: GameState, depth, max_depth, alpha, beta, n=3):
+        return depth == max_depth or state.is_done()
+        
+    def max_value(self, state: GameState, depth, max_depth, alpha, beta, n):
         """
         Incarne notre Max player
         """
-        if self.is_terminal(depth, max_depth):
+        if self.is_terminal(state, depth, max_depth):
             score = state.scores[self.get_id()]
             return score, None
 
@@ -65,8 +67,8 @@ class MyPlayer(PlayerDivercite):
     
 
     # Minimize value for MIN player
-    def min_value(self, state: GameState, depth, max_depth, alpha, beta, n=3):
-        if self.is_terminal(depth, max_depth):
+    def min_value(self, state: GameState, depth, max_depth, alpha, beta, n):
+        if self.is_terminal(state, depth, max_depth):
             score = state.scores[self.get_id()]
             return score, None
 
@@ -97,7 +99,7 @@ class MyPlayer(PlayerDivercite):
         return v_star, m_star
     
 
-    def compute_action(self, current_state: GameState, remaining_time: int = 1e9, n=3, **kwargs) -> Action:
+    def compute_action(self, current_state: GameState, remaining_time: int = 1e9, n=10, **kwargs) -> Action:
         """
         Use the minimax algorithm to choose the best action based on the heuristic evaluation of game states.
 
@@ -112,7 +114,7 @@ class MyPlayer(PlayerDivercite):
         # On commence par un minmax d'une profondeur de 2
         
                 
-        value, move = self.max_value(current_state, 0, 9, float('-inf'), float('inf'), n)
+        value, move = self.max_value(current_state, 0, 4, float('-inf'), float('inf'), n)
         return move
                 
         raise MethodNotImplementedError()
