@@ -29,7 +29,7 @@ class MyPlayer(PlayerDivercite):
         """
         return depth == max_depth
         
-    def max_value(self, state: GameState, depth, max_depth):
+    def max_value(self, state: GameState, depth, max_depth, alpha, beta, n=3):
         """
         Incarne notre Max player
         """
@@ -41,19 +41,31 @@ class MyPlayer(PlayerDivercite):
         m_star = None
         
         possible_actions = state.generate_possible_light_actions()
+        action_scores=[]
 
-        for action in possible_actions:
+        for action in possible_actions : 
+            state_temp = state.apply_action(action)
+            action_scores.append((action, state_temp.scores[self.get_id()]))
+        action_scores.sort(key=lambda x: x[1], reverse=True)  # Trier par score décroissant
+        best_actions = [action for action, score in action_scores[:n]]
+
+        for action in best_actions:
             new_state = state.apply_action(action)
-            v, _ = self.min_value(new_state, depth + 1, max_depth)
+            v, _ = self.min_value(new_state, depth + 1, max_depth, alpha, beta, n)
 
             if v > v_star:
                 v_star = v
                 m_star = action
-
+            
+            if v_star >= beta:
+                break
+            
+        alpha = max(alpha, v_star)
         return v_star, m_star
+    
 
     # Minimize value for MIN player
-    def min_value(self, state: GameState, depth, max_depth):
+    def min_value(self, state: GameState, depth, max_depth, alpha, beta, n=3):
         if self.is_terminal(depth, max_depth):
             score = state.scores[self.get_id()]
             return score, None
@@ -61,19 +73,31 @@ class MyPlayer(PlayerDivercite):
         v_star = float('inf')
         m_star = None
         
+        action_scores=[]
         possible_actions = state.generate_possible_light_actions()
+        for action in possible_actions : 
+            state_temp = state.apply_action(action)
+            action_scores.append((action, state_temp.scores[self.get_id()]))
+        action_scores.sort(key=lambda x: x[1])  # Trier par score croissant
+        best_actions = [action for action, score in action_scores[:n]]
 
-        for action in possible_actions:
+        for action in best_actions:
             new_state = state.apply_action(action)
-            v, _ = self.max_value(new_state, depth + 1, max_depth)
+            v, _ = self.max_value(new_state, depth + 1, max_depth, alpha, beta, n)
 
             if v < v_star:
                 v_star = v
                 m_star = action
 
-        return v_star, m_star
+            if v_star <= alpha:
+                break
 
-    def compute_action(self, current_state: GameState, remaining_time: int = 1e9, **kwargs) -> Action:
+            beta = min(beta, v_star)
+
+        return v_star, m_star
+    
+
+    def compute_action(self, current_state: GameState, remaining_time: int = 1e9, n=3, **kwargs) -> Action:
         """
         Use the minimax algorithm to choose the best action based on the heuristic evaluation of game states.
 
@@ -88,7 +112,7 @@ class MyPlayer(PlayerDivercite):
         # On commence par un minmax d'une profondeur de 2
         
                 
-        value, move = self.max_value(current_state, 0, 2)
+        value, move = self.max_value(current_state, 0, 9, float('-inf'), float('inf'), n)
         return move
                 
         raise MethodNotImplementedError()
