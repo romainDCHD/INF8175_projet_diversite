@@ -91,75 +91,66 @@ class MyPlayer(PlayerDivercite):
         return 0 <= x < dim_x and 0 <= y < dim_y
 
 
-    def heuritic_empechement_diversite(self, state: GameState):
+    def heuritic_full_diversite(self, state: GameState):
         """
-        Permet de bloquer les diversités adverses
+        Favorise la diversité des ressources de couleurs autour des tours du joueur Max.
+        Le bonus est attribué uniquement si toutes les ressources autour de la tour 
+        sont de couleurs uniques.
         """
-
-        # Identifier le joueur Max (celui qui commence la partie)
-        max_player_id = 1 if self.get_id() == 1 else 0  # Le joueur Max commence la partie
-        opponent_symbol = 'W' if max_player_id == 0 else 'B'  # L'adversaire est celui opposé au joueur Max
-        player_symbol = 'B' if opponent_symbol == 'W' else 'W'  # Symbole du joueur Max (opposé à l'adversaire)
+        id_joueur = state.next_player.get_id()
         
+        # Déterminer les symboles des joueurs
+        if self.get_name() == id_joueur:
+            opponent_symbol = 'W'
+            player_symbol = 'B'
+        else:
+            opponent_symbol = 'B'
+            player_symbol = 'W'    
+
         board = state.get_rep().get_env()  # Représentation du plateau
+        total_diversity_bonus = 0  # Bonus total pour encourager la diversité autour des tours Max
 
-        placement_bonus = 0  # Bonus pour remplir la condition autour d'une tour adverse
-
-        # Pour chaque pièce du plateau 
+        # Pour chaque pièce du plateau
         for pos, piece in board.items():
-            # Récupérer les infos de la pièce : ex. RCB = rouge, tour, joueur blanc
             piece_type = piece.get_type()
 
-            # Si c'est une tour adverse
-            if piece_type[1] == 'C' and piece_type[2] == opponent_symbol:
-                tower_color = piece_type[0]  # La couleur de la tour
+            # Vérifier si la pièce est une tour du joueur Max
+            if piece_type[1] == 'C' and piece_type[2] == player_symbol:
+                neighbors = self.get_adjacent_positions(pos, state)  # Positions adjacentes à la tour
+                different_colors = set()
+                has_redundancy = False  # Indicateur de redondance
 
-                # Vérifier les cases adjacentes à la tour adverse pour y trouver des ressources
-                neighbors = self.get_adjacent_positions(pos, state)
-                # print ("len(neighbors) : ", len(neighbors)) 
-                # Si 4 pièces sont autour de cette tour
-                if len(neighbors) == 4:
-                    different_colors = set()  # Utiliser un ensemble pour les couleurs différentes
-                    player_resource_present = 0  # Vérifier si une ressource du joueur Max est présente
-                    piece_like_tower_colors = 0  # nombre de ressources de la couleur de la tour
+                # Analyser les couleurs des ressources autour de la tour
+                for neighbor in neighbors:
+                    if neighbor in board:  # Si une ressource est présente
+                        neighbor_piece = board[neighbor].get_type()
+                        neighbor_color = neighbor_piece[0]
+                        print(f"neighbor_color: {neighbor_color}, current different_colors: {different_colors}")  # Débogage
 
-                    for neighbor in neighbors:
-                        # Si une ressource est présente sur la case adjacente
-                        if neighbor in board:  
-                            neighbor_piece = board[neighbor].get_type()  # Récupérer les infos de la pièce
-                            neighbor_color = neighbor_piece[0]  # La couleur de la ressource
-                            # print("neighbor_piece : ", neighbor_piece)
-                            
-                            different_colors.add(neighbor_color)
-                            
-                            # Si la ressource a la même couleur que la tour, on incrémente
-                            if neighbor_piece[0] == tower_color:
-                                piece_like_tower_colors += 1
-                            
-                            # Vérifier si la ressource appartient au joueur Max
-                            if neighbor_piece[2] == player_symbol:
-                                player_resource_present += 1
+                        # Si la couleur est déjà présente, indiquer une redondance
+                        if neighbor_color in different_colors:
+                            print(f"Redondance détectée avec {neighbor_color} autour de la tour à {pos}")
+                            has_redundancy = True
+                            break  # Sortir si redondance trouvée
+                        different_colors.add(neighbor_color)
 
-                    # Éviter de compléter la diversité avec une troisième couleur différente
-                    if len(different_colors) == 4 :
-                        # print("Empêchement de diversité, pas d'ajout de ressource")
-                        return 0
+                # Calculer le bonus pour cette tour si aucune redondance n'a été trouvée
+                if not has_redundancy:
+                    if len(different_colors) == 2:
+                        total_diversity_bonus += 20
+                        print(f"Bonus 20 pour deux couleurs différentes autour de la tour à {pos}")
+                    elif len(different_colors) == 3:
+                        total_diversity_bonus += 50
+                        print(f"Bonus 50 pour trois couleurs différentes autour de la tour à {pos}")
+                    elif len(different_colors) == 4:
+                        total_diversity_bonus += 100
+                        print(f"Bonus 100 pour quatre couleurs différentes autour de la tour à {pos}")
 
-                    # Si la diversité est partiellement remplie et que c'est avantageux pour le joueur Max
-                    if len(different_colors) == 3 and piece_like_tower_colors <= 1:
-                        # Si peu de pièces du joueur Max sont présentes
-                        if player_resource_present == 1:
-                            # print(f"50 points")
-                            placement_bonus += 50  # Bonus fort si la condition est remplie
-                        # Sinon, moins de points (pour éviter de cibler cet objectif)
-                        if player_resource_present > 1:
-                            # print(f"20 points")
-                            placement_bonus += 20  # Bonus réduit si la condition est remplie
-                        
-        # L'heuristique est basée sur le score du joueur + un bonus pour la condition spéciale
-        heuristic =  placement_bonus
+        return total_diversity_bonus
 
-        return heuristic
+
+
+
 
     def heuristic_score(self, state: GameState):
         """
@@ -169,23 +160,23 @@ class MyPlayer(PlayerDivercite):
         ########## Accéder aux paramètres du jeu pour évaluer les heuristiques ##########
         # Score actuel du joueur
         player_score = state.scores[self.get_id()]
-        print("***\nplayer score : ", player_score)
+        # print("***\nplayer score : ", player_score)
 
         # Pièces restantes du joueur
         pieces_left = state.players_pieces_left[self.get_id()]
-        print("pieces_left : ", pieces_left)
+        # print("pieces_left : ", pieces_left)
 
         ########## Calcul des heuristiques ##########
         # Bonus en fonction du nombre de pièces restantes
         piece_restantes = self.heuristic_piece_restantes(pieces_left)        
         # print("piece_restantes : ", piece_restantes)
         
-        empechement_diversite = self.heuritic_empechement_diversite(state)
-        print("empechement_diversite : ", empechement_diversite)
+        full_diversite = self.heuritic_full_diversite(state)
+        # print("score full_diversite : ", full_diversite)
 
 
         ########## Intégration des heuristique dans notre heuristique finale ##########
-        heuristic = player_score  + empechement_diversite
+        heuristic =  full_diversite
 
         print("score heuristique :", heuristic)
         return heuristic
