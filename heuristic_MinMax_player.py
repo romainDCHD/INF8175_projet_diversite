@@ -96,10 +96,25 @@ class MyPlayer(PlayerDivercite):
         Permet de bloquer les diversités adverses
         """
 
-        # Identifier le joueur Max (celui qui commence la partie)
-        max_player_id = 1 if self.get_id() == 1 else 0  # Le joueur Max commence la partie
-        opponent_symbol = 'W' if max_player_id == 0 else 'B'  # L'adversaire est celui opposé au joueur Max
-        player_symbol = 'B' if opponent_symbol == 'W' else 'W'  # Symbole du joueur Max (opposé à l'adversaire)
+        # # Identifier le joueur Max (celui qui commence la partie)
+        # max_player_id = 1 if self.get_id() == 1 else 0  # Le joueur Max commence la partie
+        # opponent_symbol = 'W' if max_player_id == 0 else 'B'  # L'adversaire est celui opposé au joueur Max
+        # player_symbol = 'B' if opponent_symbol == 'W' else 'W'  # Symbole du joueur Max (opposé à l'adversaire)
+        
+        players =  state.players
+        for player in players:
+            print("all_players: ", player.get_id()) 
+        print("state.get_next_player: ", state.next_player.get_id())
+        print("self.get_id() : ", self.get_id())
+        
+        if state.next_player.get_id() == players[0].get_id():
+            player_symbol = 'W'
+            opponent_symbol = 'B'            
+        elif state.next_player.get_id() == players[1].get_id():
+            player_symbol = 'B'
+            opponent_symbol = 'W'
+        else :
+            print("ID problems!!!!!!!!!!!")
         
         board = state.get_rep().get_env()  # Représentation du plateau
 
