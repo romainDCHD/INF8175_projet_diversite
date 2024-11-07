@@ -30,40 +30,6 @@ class MyPlayer(PlayerDivercite):
         return depth == max_depth 
     
     
-    def heuristic_piece_restantes(self, pieces_left):
-        """
-        Privilégie l'équi-répartition des ressources et tours pour ne pas les gaspiller au début.
-        
-        """
-        piece_bonus = 0
-
-        for piece, n_piece in pieces_left.items():
-            # Vérifier si c'est une "tour" 
-            is_tower = 'C' in piece
-
-            if is_tower:
-                if n_piece == 2:
-                    piece_bonus += 2  # Bonus maximal si 2 pièces restantes (pour les tours)
-                elif n_piece == 1:
-                    piece_bonus += 1  # Bonus réduit si 1 pièce restante (pour les tours)
-                else:
-                    piece_bonus += 0  # Pas de bonus si 0 pièce restante
-            else:
-                if n_piece == 3:
-                    piece_bonus += 3  # Bonus maximal si 3 pièces restantes
-                elif n_piece == 2:
-                    piece_bonus += 2  # Bonus réduit si 2 pièces restantes
-                elif n_piece == 1:
-                    piece_bonus += 1  # Bonus plus faible si 1 pièce restante
-                else:
-                    piece_bonus += 0  # Pas de bonus si 0 pièce restante
-        
-        # On pondère le score de l'heuristique pour qu'elle ai un poids proportionnel au score
-        heuristique = piece_bonus
-        return heuristique
-    
-    ############## Empechement diversite ##################
-     # Fonction qui retourne les positions adjacentes
     def get_adjacent_positions(self, pos, state: GameState):
         """
         Retourne les positions adjacentes à une position donnée sur le plateau.
@@ -81,7 +47,6 @@ class MyPlayer(PlayerDivercite):
         
         return valid_positions
 
-    # Fonction qui vérifie si une position est dans les limites du plateau
     def is_within_bounds(self, pos, state: GameState):
         """
         Vérifie si une position est dans les limites du plateau.
@@ -89,7 +54,6 @@ class MyPlayer(PlayerDivercite):
         x, y = pos
         dim_x, dim_y = state.get_rep().get_dimensions()  # Obtenir les dimensions du plateau
         return 0 <= x < dim_x and 0 <= y < dim_y
-
 
     def heuritic_empechement_diversite(self, state: GameState):
         """
@@ -101,20 +65,27 @@ class MyPlayer(PlayerDivercite):
         # opponent_symbol = 'W' if max_player_id == 0 else 'B'  # L'adversaire est celui opposé au joueur Max
         # player_symbol = 'B' if opponent_symbol == 'W' else 'W'  # Symbole du joueur Max (opposé à l'adversaire)
         
-        players =  state.players
-        for player in players:
-            print("all_players: ", player.get_id()) 
-        print("state.get_next_player: ", state.next_player.get_id())
-        print("self.get_id() : ", self.get_id())
+        # players =  state.players
+        # for player in players:
+        #     print("all_players: ", player.get_id()) 
+        # print("state.get_next_player: ", state.next_player.get_id())
+        # print("self.get_id() : ", self.get_id())
         
-        if state.next_player.get_id() == players[0].get_id():
-            player_symbol = 'W'
-            opponent_symbol = 'B'            
-        elif state.next_player.get_id() == players[1].get_id():
-            player_symbol = 'B'
-            opponent_symbol = 'W'
-        else :
-            print("ID problems!!!!!!!!!!!")
+        # if state.next_player.get_id() == players[0].get_id():
+        #     player_symbol = 'W'
+        #     opponent_symbol = 'B'            
+        # elif state.next_player.get_id() == players[1].get_id():
+        #     player_symbol = 'B'
+        #     opponent_symbol = 'W'
+        # else :
+        #     print("ID problems!!!!!!!!!!!")
+        
+        player_symbol = self.get_piece_type()
+        if player_symbol == 'W':
+            opponent_symbol = 'B' 
+        else:
+            opponent_symbol = 'W' 
+        print("player_symbol: ", player_symbol)
         
         board = state.get_rep().get_env()  # Représentation du plateau
 
@@ -173,34 +144,146 @@ class MyPlayer(PlayerDivercite):
                         
         # L'heuristique est basée sur le score du joueur + un bonus pour la condition spéciale
         heuristic =  placement_bonus
+        return heuristic
+    
+    def heuristic_piece_restantes(self, pieces_left):
+        """
+        Favorise une répartition équilibrée des ressources et des tours en fonction de leurs couleurs.
+        Un bonus est attribué en fonction de l'équirépartition des quantités de chaque couleur.
+        La séquence des ajouts est : tour, ressource, ressource, tour.
+        """
+        color_counts_resources = {"R": 0, "G": 0, "B": 0, "Y": 0}  # Comptage des ressources par couleur
+        color_counts_towers = {"R": 0, "G": 0, "B": 0, "Y": 0}     # Comptage des tours par couleur
 
+        # Comptage des ressources et tours par couleur
+        for piece, n_piece in pieces_left.items():
+            color = piece[0]  # Première lettre pour identifier la couleur
+            is_tower = 'C' in piece  # Vérifier si c'est une "tour"
+
+            if is_tower:
+                color_counts_towers[color] += n_piece
+            else:
+                color_counts_resources[color] += n_piece
+
+        # Pour les ressources
+        values_resources = list(color_counts_resources.values())
+        total_resources = sum(values_resources)
+        average_resources = total_resources / len(values_resources) if total_resources > 0 else 0
+        resources_deviation = int(sum(abs(value - average_resources) for value in values_resources))
+
+        # Pour les tours
+        values_towers = list(color_counts_towers.values())
+        total_towers = sum(values_towers)
+        average_towers = total_towers / len(values_towers) if total_towers > 0 else 0
+        towers_deviation = int(sum(abs(value - average_towers) for value in values_towers))
+
+        piece_bonus = 0
+        
+        # if towers_deviation <= 1 and resources_deviation <= 1:
+        #     piece_bonus = 2
+        # elif towers_deviation <= 2 and resources_deviation <= 2:
+        #     piece_bonus = 1
+
+        # # Vérification des phases de jeu
+        total_pieces = total_resources + total_towers
+        if total_pieces >= 16:
+            # Favoriser l'ajout de tours
+            if towers_deviation <= 1 and resources_deviation <= 0:
+                piece_bonus = 2
+            elif towers_deviation <= 2 and resources_deviation <= 0:
+                piece_bonus = 1
+            
+        elif 8 <= total_pieces < 16:
+            # Favoriser l'ajout de ressources
+            if resources_deviation <= 1 and towers_deviation <= 1:
+                piece_bonus = 2
+            elif resources_deviation <= 2 and towers_deviation <= 1:
+                piece_bonus = 1
+            
+        elif 4 <= total_pieces < 8:
+            # Retourner à favoriser les tours
+            if towers_deviation <= 2 and resources_deviation <= 2:
+                piece_bonus = 2
+            elif towers_deviation <= 3 and resources_deviation <= 2:
+                piece_bonus = 1
+            
+        else:
+            # Favoriser les ressources
+            if resources_deviation <= 3 and towers_deviation <= 2:
+                piece_bonus = 2
+            elif resources_deviation <= 4 and towers_deviation <= 2:
+                piece_bonus = 1
+
+        return piece_bonus
+    
+    def heuritic_no_gap(self, state: GameState):
+        """
+        Attribue un malus pour chacune de nos ressource proche de l'ennemi
+        """
+        
+        player_symbol = self.get_piece_type()
+        if player_symbol == 'W':
+            opponent_symbol = 'B' 
+        else:
+            opponent_symbol = 'W' 
+        print("player_symbol: ", player_symbol)
+        
+        board = state.get_rep().get_env()  # Représentation du plateau
+
+        placement_bonus = 0  # Bonus pour remplir la condition autour d'une tour adverse
+
+        # Pour chaque pièce du plateau 
+        for pos, piece in board.items():
+            # Récupérer les infos de la pièce : ex. RCB = rouge, tour, joueur blanc
+            piece_type = piece.get_type()
+
+            # Si c'est une de nos ressource
+            if piece_type[1] == 'R' and piece_type[2] == player_symbol:
+
+                # Vérifier les cases adjacentes à la ressource
+                neighbors = self.get_adjacent_positions(pos, state)
+                # print ("len(neighbors) : ", len(neighbors)) 
+                
+                # Si une tour adverse autour de la ressource : appliquer le malus
+                for neighbor in neighbors:
+                    if neighbor in board:  
+                        neighbor_piece = board[neighbor].get_type()  # Récupérer les infos de la pièce
+                    
+                        if neighbor_piece[1] == 'C' and neighbor_piece[2] == opponent_symbol:
+                            placement_bonus -= 1
+                        
+        # L'heuristique est basée sur le score du joueur + un bonus pour la condition spéciale
+        heuristic =  placement_bonus
         return heuristic
 
     def heuristic_score(self, state: GameState):
         """
-        Privilégie l'équi-répartition des ressources et tours pour ne pas les gaspiller au début.
+        Notre fonction d'heuristique combinaison des différentes heuristiques définies précédemment
         
         """
         ########## Accéder aux paramètres du jeu pour évaluer les heuristiques ##########
         # Score actuel du joueur
         player_score = state.scores[self.get_id()]
-        print("***\nplayer score : ", player_score)
+        # print("***\nplayer score : ", player_score)
 
         # Pièces restantes du joueur
         pieces_left = state.players_pieces_left[self.get_id()]
-        print("pieces_left : ", pieces_left)
+        # print("pieces_left : ", pieces_left)
 
         ########## Calcul des heuristiques ##########
         # Bonus en fonction du nombre de pièces restantes
         piece_restantes = self.heuristic_piece_restantes(pieces_left)        
         # print("piece_restantes : ", piece_restantes)
         
+        # Permet d'empêcher les diversités adverses
         empechement_diversite = self.heuritic_empechement_diversite(state)
-        print("empechement_diversite : ", empechement_diversite)
-
+        # print("empechement_diversite : ", empechement_diversite)
+        
+        # Eviter de mettre des ressources proches de l'adversaire
+        no_in_gap_malus = self.heuritic_no_gap(state)
 
         ########## Intégration des heuristique dans notre heuristique finale ##########
-        heuristic = player_score  + empechement_diversite
+        heuristic = player_score  + empechement_diversite + piece_restantes*2 + no_in_gap_malus
 
         print("score heuristique :", heuristic)
         return heuristic
