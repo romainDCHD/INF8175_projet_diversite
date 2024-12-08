@@ -142,10 +142,6 @@ class MyPlayer(PlayerDivercite):
         player_score = state.scores[self.get_id()]
         # print("***\nplayer score : ", player_score)
 
-        # Pièces restantes du joueur
-        pieces_left = state.players_pieces_left[self.get_id()]
-        # print("pieces_left : ", pieces_left)
-
         ########## Calcul des heuristiques ##########
         
         no_in_gap_malus = self.heuritic_no_gap(state)

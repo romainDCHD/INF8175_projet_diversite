@@ -116,7 +116,7 @@ class MyPlayer(PlayerDivercite):
 
         # Pièces restantes du joueur
         pieces_left = state.players_pieces_left[self.get_id()]
-        # print("pieces_left : ", pieces_left)
+        print("pieces_left : ", pieces_left)
 
         ########## Calcul des heuristiques ##########
         # Bonus en fonction du nombre de pièces restantes

@@ -35,6 +35,7 @@ class MyPlayer(PlayerDivercite):
 
     def get_adjacent_positions(self, pos, state: GameState):
         """
+        Fonction pour calculer des heuristique. 
         Retourne les positions adjacentes à une position donnée sur le plateau.
         """
         x, y = pos
@@ -46,12 +47,12 @@ class MyPlayer(PlayerDivercite):
         ]
 
         # Filtrer les positions qui ne sont pas sur le plateau (en dehors des limites)
-        valid_positions = [p for p in adjacent_positions if self.is_within_bounds(p, state)]
-        
+        valid_positions = [p for p in adjacent_positions if self.is_within_bounds(p, state)]        
         return valid_positions
 
     def is_within_bounds(self, pos, state: GameState):
         """
+        Fonction pour calculer des heuristique. 
         Vérifie si une position est dans les limites du plateau.
         """
         x, y = pos
@@ -60,39 +61,20 @@ class MyPlayer(PlayerDivercite):
 
     def heuritic_empechement_diversite(self, state: GameState):
         """
-        Permet de bloquer les diversités adverses
+        Heuristique qui permet de bloquer les diversités adverses
         """
-
-        # # Identifier le joueur Max (celui qui commence la partie)
-        # max_player_id = 1 if self.get_id() == 1 else 0  # Le joueur Max commence la partie
-        # opponent_symbol = 'W' if max_player_id == 0 else 'B'  # L'adversaire est celui opposé au joueur Max
-        # player_symbol = 'B' if opponent_symbol == 'W' else 'W'  # Symbole du joueur Max (opposé à l'adversaire)
-        
-        # players =  state.players
-        # for player in players:
-        #     print("all_players: ", player.get_id()) 
-        # print("state.get_next_player: ", state.next_player.get_id())
-        # print("self.get_id() : ", self.get_id())
-        
-        # if state.next_player.get_id() == players[0].get_id():
-        #     player_symbol = 'W'
-        #     opponent_symbol = 'B'            
-        # elif state.next_player.get_id() == players[1].get_id():
-        #     player_symbol = 'B'
-        #     opponent_symbol = 'W'
-        # else :
-        #     print("ID problems!!!!!!!!!!!")
-        
+        # Identifier le joueur en cours
         player_symbol = self.get_piece_type()
         if player_symbol == 'W':
             opponent_symbol = 'B' 
         else:
             opponent_symbol = 'W' 
-        #print("player_symbol: ", player_symbol)
         
-        board = state.get_rep().get_env()  # Représentation du plateau
+        # Représentation du plateau
+        board = state.get_rep().get_env()  
 
-        placement_bonus = 0  # Bonus pour remplir la condition autour d'une tour adverse
+        # Le score de l'heuristique
+        placement_bonus = 0  # L'heuristique est basée sur le score du joueur + un bonus pour la condition spéciale
 
         # Pour chaque pièce du plateau 
         for pos, piece in board.items():
@@ -105,7 +87,6 @@ class MyPlayer(PlayerDivercite):
 
                 # Vérifier les cases adjacentes à la tour adverse pour y trouver des ressources
                 neighbors = self.get_adjacent_positions(pos, state)
-                # print ("len(neighbors) : ", len(neighbors)) 
                 # Si 4 pièces sont autour de cette tour
                 if len(neighbors) == 4:
                     different_colors = set()  # Utiliser un ensemble pour les couleurs différentes
@@ -131,29 +112,24 @@ class MyPlayer(PlayerDivercite):
 
                     # Éviter de compléter la diversité avec une troisième couleur différente
                     if len(different_colors) == 4 :
-                        # print("Empêchement de diversité, pas d'ajout de ressource")
                         return 0
 
                     # Si la diversité est partiellement remplie et que c'est avantageux pour le joueur Max
                     if len(different_colors) == 3 and piece_like_tower_colors <= 1:
                         # Si peu de pièces du joueur Max sont présentes
                         if player_resource_present == 1:
-                            # print(f"50 points")
                             placement_bonus += 50  # Bonus fort si la condition est remplie
                         # Sinon, moins de points (pour éviter de cibler cet objectif)
                         if player_resource_present > 1:
-                            # print(f"20 points")
                             placement_bonus += 20  # Bonus réduit si la condition est remplie
                         
-        # L'heuristique est basée sur le score du joueur + un bonus pour la condition spéciale
-        heuristic =  placement_bonus
-        return heuristic
+        return placement_bonus
     
     def heuristic_piece_restantes(self, pieces_left):
         """
         Favorise une répartition équilibrée des ressources et des tours en fonction de leurs couleurs.
         Un bonus est attribué en fonction de l'équirépartition des quantités de chaque couleur.
-        La séquence des ajouts est : tour, ressource, ressource, tour.
+        La séquence des ajouts est : tour, ressource, tour, ressource.
         """
         color_counts_resources = {"R": 0, "G": 0, "B": 0, "Y": 0}  # Comptage des ressources par couleur
         color_counts_towers = {"R": 0, "G": 0, "B": 0, "Y": 0}     # Comptage des tours par couleur
@@ -180,14 +156,10 @@ class MyPlayer(PlayerDivercite):
         average_towers = total_towers / len(values_towers) if total_towers > 0 else 0
         towers_deviation = int(sum(abs(value - average_towers) for value in values_towers))
 
+        # Score de l'heuristique
         piece_bonus = 0
-        
-        # if towers_deviation <= 1 and resources_deviation <= 1:
-        #     piece_bonus = 2
-        # elif towers_deviation <= 2 and resources_deviation <= 2:
-        #     piece_bonus = 1
 
-        # # Vérification des phases de jeu
+        # Vérification des phases de jeu
         total_pieces = total_resources + total_towers
         if total_pieces >= 16:
             # Favoriser l'ajout de tours
@@ -224,15 +196,17 @@ class MyPlayer(PlayerDivercite):
         Attribue un malus pour chacune de nos ressource proche de l'ennemi
         """
         
+        # identification du joueur courant
         player_symbol = self.get_piece_type()
         if player_symbol == 'W':
             opponent_symbol = 'B' 
         else:
             opponent_symbol = 'W' 
-        #print("player_symbol: ", player_symbol)
         
-        board = state.get_rep().get_env()  # Représentation du plateau
+        # Représentation du plateau
+        board = state.get_rep().get_env()  
 
+        # Score de l'heuristique
         placement_bonus = 0  # Bonus pour remplir la condition autour d'une tour adverse
 
         # Pour chaque pièce du plateau 
@@ -245,7 +219,6 @@ class MyPlayer(PlayerDivercite):
 
                 # Vérifier les cases adjacentes à la ressource
                 neighbors = self.get_adjacent_positions(pos, state)
-                # print ("len(neighbors) : ", len(neighbors)) 
                 
                 # Si une tour adverse autour de la ressource : appliquer le malus
                 for neighbor in neighbors:
@@ -255,9 +228,63 @@ class MyPlayer(PlayerDivercite):
                         if neighbor_piece[1] == 'C' and neighbor_piece[2] == opponent_symbol:
                             placement_bonus -= 1
                         
-        # L'heuristique est basée sur le score du joueur + un bonus pour la condition spéciale
-        heuristic =  placement_bonus
-        return heuristic
+        return placement_bonus
+    
+    def heuristic_full_diversite(self, state: GameState):
+        """
+        Favorise la diversité des ressources de couleurs autour des tours du joueur Max.
+        Le bonus est attribué en fonction du nombre de ressources adjacentes et de leur diversité de couleurs,
+        mais seulement s'il n'y a pas de redondance.
+        """
+
+        player_symbol = self.get_piece_type()
+        board = state.get_rep().get_env() 
+        
+        # Score de l'heuristique
+        total_diversity_bonus = 0
+
+        # Parcours des pièces du plateau
+        for pos, piece in board.items():
+            piece_type = piece.get_type()
+
+            # Vérifier si c'est une tour du joueur Max
+            if piece_type[1] == 'C' and piece_type[2] == player_symbol:
+                # print(f"Tour {player_symbol} détectée en {pos}")
+                neighbors = self.get_adjacent_positions(pos, state)
+                different_colors = set()
+                occupied_count = 0
+                has_duplicates = False
+
+                # Analyser les couleurs autour de la tour
+                for neighbor in neighbors:
+                    if neighbor in board:  # Si une ressource est présente
+                        neighbor_piece = board[neighbor].get_type()
+                        neighbor_color = neighbor_piece[0]
+
+                        # Vérifier s'il y a un doublon
+                        if neighbor_color in different_colors:
+                            has_duplicates = True
+                            # print(f"Doublon détecté pour la couleur {neighbor_color} autour de la tour {pos}. Score annulé.")
+                            break  # Arrêter le calcul pour cette tour en cas de doublon
+                        
+                        # Ajouter la couleur unique au set
+                        different_colors.add(neighbor_color)
+                        occupied_count += 1
+                        # print("Ressource trouvée :", neighbor_piece)
+                
+                # Calculer le bonus uniquement s'il n'y a aucun doublon
+                if not has_duplicates:
+                    # print(f"Couleurs uniques autour de la tour {pos} : {different_colors}")
+                    if occupied_count == 4:
+                        total_diversity_bonus += 4 
+                    elif occupied_count == 3:
+                        total_diversity_bonus += 3
+                    elif occupied_count == 2:
+                        total_diversity_bonus += 2
+                    elif occupied_count == 1:
+                        total_diversity_bonus += 1  # Bonus minimal pour une seule ressource adjacente
+
+        return total_diversity_bonus
 
     def heuristic_score(self, state: GameState):
         """
@@ -284,9 +311,13 @@ class MyPlayer(PlayerDivercite):
         
         # Eviter de mettre des ressources proches de l'adversaire
         no_in_gap_malus = self.heuritic_no_gap(state)
+        
+        # Favorise les diversités sur du plus long terme
+        full_diversite = self.heuristic_full_diversite(state)
+        # print("score full_diversite : ", full_diversite)
 
         ########## Intégration des heuristique dans notre heuristique finale ##########
-        heuristic = player_score  + empechement_diversite + piece_restantes*2 + no_in_gap_malus
+        heuristic = player_score  + empechement_diversite + piece_restantes*2 + no_in_gap_malus + full_diversite
 
         #print("score heuristique :", heuristic)
         return heuristic
@@ -297,6 +328,7 @@ class MyPlayer(PlayerDivercite):
         Incarne notre Max player
         """
         if self.is_terminal(state, depth, max_depth):
+            # Si nous sommes dans un etat terminal on calcul notre heuristique
             score = self.heuristic_score(state)
             return score, None
 
@@ -331,6 +363,7 @@ class MyPlayer(PlayerDivercite):
     # Minimize value for MIN player
     def min_value(self, state: GameState, depth, max_depth, alpha, beta, n):
         if self.is_terminal(state, depth, max_depth):
+            # Si nous sommes dans un etat terminal on calcul notre heuristique
             score = self.heuristic_score(state)
             return score, None
 
@@ -372,9 +405,7 @@ class MyPlayer(PlayerDivercite):
         Returns:
             Action: The best action as determined by minimax.
         """
-
         
-                
         value, move = self.max_value(current_state, 0, 5, float('-inf'), float('inf'), n)
         return move
                 
